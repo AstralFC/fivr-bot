@@ -10,18 +10,10 @@ const fs = require("fs");
 
 const DB_FILE = "./database.json";
 
-// ==========================================
-// FRIEND'S LEAGUE CONFIG
-// ==========================================
-
 const POC_ID = "1410380405089239115";
 
-const TEAM_OWNER_ROLE_ID =
-    "1539809139394478121";
-
-// ==========================================
-// DATABASE
-// ==========================================
+// Team Owner role
+const TEAM_OWNER_ROLE_ID = "1539809139394478121";
 
 function loadDB() {
     if (!fs.existsSync(DB_FILE)) {
@@ -30,7 +22,8 @@ function loadDB() {
             players: {},
             games: {},
             stats: {},
-            pendingOffers: {}
+            pendingOffers: {},
+            settings: { season: 1 }
         };
     }
 
@@ -43,6 +36,7 @@ function loadDB() {
     db.games ??= {};
     db.stats ??= {};
     db.pendingOffers ??= {};
+    db.settings ??= { season: 1 };
 
     return db;
 }
@@ -55,64 +49,79 @@ function saveDB(db) {
 }
 
 function isPOC(userId) {
-    return userId === POC_ID;
+    return (
+        userId === POC_ID ||
+        userId === CO_POC_ID
+    );
 }
 
 // ==========================================
-// TEAM OWNER ROLE
+// GIVE TEAM OWNER ROLE
 // ==========================================
 
-async function giveOwnerRole(interaction, userId) {
+async function giveTeamOwnerRole(
+    interaction,
+    userId
+) {
     try {
         const member =
-            await interaction.guild.members.fetch(userId);
+            await interaction.guild.members.fetch(
+                userId
+            );
 
-        const role =
-            interaction.guild.roles.cache.get(
+        if (
+            !member.roles.cache.has(
+                TEAM_OWNER_ROLE_ID
+            )
+        ) {
+            await member.roles.add(
                 TEAM_OWNER_ROLE_ID
             );
-
-        if (!role) {
-            console.log(
-                "⚠️ Team Owner role was not found."
-            );
-            return;
         }
 
-        if (!member.roles.cache.has(role.id)) {
-            await member.roles.add(role);
-        }
+        return true;
 
     } catch (error) {
+
         console.error(
-            "❌ Could not give Team Owner role:",
+            `❌ Could not give Team Owner role to ${userId}:`,
             error.message
         );
+
+        return false;
     }
 }
 
-async function removeOwnerRole(interaction, userId) {
+// ==========================================
+// REMOVE TEAM OWNER ROLE
+// ==========================================
+
+async function removeTeamOwnerRole(
+    interaction,
+    userId
+) {
     if (!userId) return;
 
     try {
         const member =
-            await interaction.guild.members.fetch(userId);
-
-        const role =
-            interaction.guild.roles.cache.get(
-                TEAM_OWNER_ROLE_ID
+            await interaction.guild.members.fetch(
+                userId
             );
 
         if (
-            role &&
-            member.roles.cache.has(role.id)
+            member.roles.cache.has(
+                TEAM_OWNER_ROLE_ID
+            )
         ) {
-            await member.roles.remove(role);
+            await member.roles.remove(
+                TEAM_OWNER_ROLE_ID
+            );
         }
 
     } catch (error) {
+
         console.error(
-            "❌ Could not remove Team Owner role:",
+            `❌ Could not remove Team Owner role from ${userId}:`,
             error.message
         );
     }
@@ -130,17 +139,17 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("create")
-        .setDescription("Create league information")
+        .setDescription("VVLL creation commands")
 
         .addSubcommand(sub =>
             sub
                 .setName("team")
-                .setDescription("Create a team")
+                .setDescription("Create a VVLL team")
 
                 .addRoleOption(option =>
                     option
                         .setName("role")
-                        .setDescription("Team role")
+                        .setDescription("Team Discord role")
                         .setRequired(true)
                 )
 
@@ -162,7 +171,7 @@ const commands = [
         .addSubcommand(sub =>
             sub
                 .setName("game")
-                .setDescription("Create a game")
+                .setDescription("Create a VVLL game")
 
                 .addRoleOption(option =>
                     option
@@ -188,7 +197,7 @@ const commands = [
                 .addStringOption(option =>
                     option
                         .setName("standing")
-                        .setDescription("Tournament standing")
+                        .setDescription("Tournament stage")
                         .setRequired(true)
                         .addChoices(
                             {
@@ -234,7 +243,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("sign")
-        .setDescription("Send a contract to a player")
+        .setDescription("Send a contract offer")
 
         .addUserOption(option =>
             option
@@ -249,17 +258,17 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("release")
-        .setDescription("Release a player")
+        .setDescription("Release VVLL players")
 
         .addSubcommand(sub =>
             sub
                 .setName("player")
-                .setDescription("Release a player from your team")
+                .setDescription("Release a player")
 
                 .addUserOption(option =>
                     option
                         .setName("player")
-                        .setDescription("Player")
+                        .setDescription("Player to release")
                         .setRequired(true)
                 )
         ),
@@ -270,7 +279,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("view")
-        .setDescription("View league information")
+        .setDescription("View VVLL information")
 
         .addSubcommand(sub =>
             sub
@@ -280,7 +289,7 @@ const commands = [
                 .addRoleOption(option =>
                     option
                         .setName("team")
-                        .setDescription("Team")
+                        .setDescription("Team to view")
                         .setRequired(true)
                 )
         )
@@ -288,7 +297,7 @@ const commands = [
         .addSubcommand(sub =>
             sub
                 .setName("league")
-                .setDescription("View all teams")
+                .setDescription("View every VVLL team")
         ),
 
     // ======================================
@@ -302,7 +311,7 @@ const commands = [
         .addSubcommand(sub =>
             sub
                 .setName("stats")
-                .setDescription("Give stats")
+                .setDescription("Give stats to a player")
 
                 .addUserOption(option =>
                     option
@@ -342,12 +351,12 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("check")
-        .setDescription("Check information")
+        .setDescription("Check VVLL information")
 
         .addSubcommand(sub =>
             sub
                 .setName("stats")
-                .setDescription("Check player stats")
+                .setDescription("Check player statistics")
 
                 .addUserOption(option =>
                     option
@@ -363,12 +372,12 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("change")
-        .setDescription("Change team management")
+        .setDescription("Change VVLL management")
 
         .addSubcommand(sub =>
             sub
                 .setName("manager")
-                .setDescription("Change manager")
+                .setDescription("Change team management")
 
                 .addRoleOption(option =>
                     option
@@ -398,7 +407,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName("delete")
-        .setDescription("Delete league information")
+        .setDescription("Delete VVLL information")
 
         .addSubcommand(sub =>
             sub
@@ -408,7 +417,7 @@ const commands = [
                 .addRoleOption(option =>
                     option
                         .setName("team")
-                        .setDescription("Team")
+                        .setDescription("Team to delete")
                         .setRequired(true)
                 )
         )
@@ -440,7 +449,7 @@ async function handleCommand(interaction) {
         if (!isPOC(interaction.user.id)) {
             return interaction.reply({
                 content:
-                    "❌ Only the POC can create teams.",
+                    "❌ Only the POC or Co-POC can create teams.",
                 ephemeral: true
             });
         }
@@ -457,7 +466,7 @@ async function handleCommand(interaction) {
         if (db.teams[role.id]) {
             return interaction.reply({
                 content:
-                    "❌ That team already exists.",
+                    "❌ That team has already been created.",
                 ephemeral: true
             });
         }
@@ -467,22 +476,30 @@ async function handleCommand(interaction) {
             name: role.name,
             managerId: manager.id,
             coManagerId:
-                coManager?.id || null,
+                coManager
+                    ? coManager.id
+                    : null,
             players: []
         };
 
         saveDB(db);
 
-        await giveOwnerRole(
-            interaction,
-            manager.id
-        );
+        // Give Team Owner role to manager
+        const managerRole =
+            await giveTeamOwnerRole(
+                interaction,
+                manager.id
+            );
+
+        // Give Team Owner role to co-manager
+        let coManagerRole = true;
 
         if (coManager) {
-            await giveOwnerRole(
-                interaction,
-                coManager.id
-            );
+            coManagerRole =
+                await giveTeamOwnerRole(
+                    interaction,
+                    coManager.id
+                );
         }
 
         return interaction.reply({
@@ -490,14 +507,14 @@ async function handleCommand(interaction) {
                 new EmbedBuilder()
                     .setTitle("🏆 Team Created")
                     .setDescription(
-                        `${role}\n\n` +
-                        `👑 Manager: <@${manager.id}>\n` +
-                        `⭐ Co-Manager: ${
+                        `**Team:** ${role}\n` +
+                        `**Manager:** <@${manager.id}>\n` +
+                        `**Co-Manager:** ${
                             coManager
                                 ? `<@${coManager.id}>`
                                 : "None"
                         }\n\n` +
-                        `The Team Owner role was automatically assigned.`
+                        `👑 Team Owner role assigned automatically.`
                     )
                     .setTimestamp()
             ]
@@ -513,42 +530,55 @@ async function handleCommand(interaction) {
         const player =
             interaction.options.getUser("player");
 
-        let team = null;
+        let managerTeam = null;
 
-        for (const teamId of Object.keys(db.teams)) {
+        for (
+            const teamId of Object.keys(db.teams)
+        ) {
 
-            const current =
+            const team =
                 db.teams[teamId];
 
             if (
-                current.managerId === interaction.user.id ||
-                current.coManagerId === interaction.user.id
+                team.managerId === interaction.user.id ||
+                team.coManagerId === interaction.user.id
             ) {
-                team = current;
+                managerTeam = team;
                 break;
             }
         }
 
-        if (!team) {
+        if (!managerTeam) {
             return interaction.reply({
                 content:
-                    "❌ You are not a manager or co-manager.",
+                    "❌ You are not a manager or co-manager of a VVLL team.",
                 ephemeral: true
             });
         }
 
-        for (const teamId of Object.keys(db.teams)) {
+        let currentTeam = null;
+
+        for (
+            const teamId of Object.keys(db.teams)
+        ) {
+
+            const team =
+                db.teams[teamId];
 
             if (
-                db.teams[teamId].players
-                    .includes(player.id)
+                team.players.includes(player.id)
             ) {
-                return interaction.reply({
-                    content:
-                        "❌ That player is already signed to a team.",
-                    ephemeral: true
-                });
+                currentTeam = team;
+                break;
             }
+        }
+
+        if (currentTeam) {
+            return interaction.reply({
+                content:
+                    `❌ <@${player.id}> is already signed to **${currentTeam.name}**.`,
+                ephemeral: true
+            });
         }
 
         if (db.pendingOffers[player.id]) {
@@ -565,8 +595,9 @@ async function handleCommand(interaction) {
         db.pendingOffers[player.id] = {
             offerId,
             playerId: player.id,
-            teamId: team.roleId,
-            teamName: team.name
+            teamId: managerTeam.roleId,
+            teamName: managerTeam.name,
+            offeredBy: interaction.user.id
         };
 
         saveDB(db);
@@ -578,24 +609,25 @@ async function handleCommand(interaction) {
 
             const embed =
                 new EmbedBuilder()
-                    .setTitle("📝 Contract Offer")
+                    .setTitle(
+                        "📝 VVLL Contract Offer"
+                    )
                     .setDescription(
-                        `**${team.name}** wants to sign you.\n\n` +
-                        `Do you accept this contract?`
+                        `**${managerTeam.name}** wants to sign you.\n\nDo you accept this contract?`
                     )
                     .addFields({
                         name: "🏆 Team",
-                        value: team.name
+                        value: managerTeam.name
                     })
                     .setTimestamp();
 
-            const buttons =
+            const row =
                 new ActionRowBuilder()
                     .addComponents(
 
                         new ButtonBuilder()
                             .setCustomId(
-                                `accept_${offerId}`
+                                `contract_accept_${offerId}`
                             )
                             .setLabel("Accept")
                             .setEmoji("✅")
@@ -605,7 +637,7 @@ async function handleCommand(interaction) {
 
                         new ButtonBuilder()
                             .setCustomId(
-                                `decline_${offerId}`
+                                `contract_decline_${offerId}`
                             )
                             .setLabel("Decline")
                             .setEmoji("❌")
@@ -616,7 +648,7 @@ async function handleCommand(interaction) {
 
             await dm.send({
                 embeds: [embed],
-                components: [buttons]
+                components: [row]
             });
 
         } catch (error) {
@@ -627,14 +659,14 @@ async function handleCommand(interaction) {
 
             return interaction.reply({
                 content:
-                    "❌ I couldn't DM that player.",
+                    `❌ I couldn't DM <@${player.id}>.`,
                 ephemeral: true
             });
         }
 
         return interaction.reply({
             content:
-                `📨 Contract sent to <@${player.id}> for **${team.name}**.`
+                `📨 Contract sent to <@${player.id}> for **${managerTeam.name}**.`
         });
     }
 
@@ -650,32 +682,34 @@ async function handleCommand(interaction) {
         const player =
             interaction.options.getUser("player");
 
-        let team = null;
+        let teamFound = null;
 
-        for (const teamId of Object.keys(db.teams)) {
+        for (
+            const teamId of Object.keys(db.teams)
+        ) {
 
-            const current =
+            const team =
                 db.teams[teamId];
 
             if (
-                current.players.includes(player.id)
+                team.players.includes(player.id)
             ) {
-                team = current;
+                teamFound = team;
                 break;
             }
         }
 
-        if (!team) {
+        if (!teamFound) {
             return interaction.reply({
                 content:
-                    "❌ That player is not on a team.",
+                    "❌ That player is not on a VVLL team.",
                 ephemeral: true
             });
         }
 
         if (
-            interaction.user.id !== team.managerId &&
-            interaction.user.id !== team.coManagerId
+            interaction.user.id !== teamFound.managerId &&
+            interaction.user.id !== teamFound.coManagerId
         ) {
             return interaction.reply({
                 content:
@@ -684,8 +718,8 @@ async function handleCommand(interaction) {
             });
         }
 
-        team.players =
-            team.players.filter(
+        teamFound.players =
+            teamFound.players.filter(
                 id => id !== player.id
             );
 
@@ -693,6 +727,7 @@ async function handleCommand(interaction) {
 
         saveDB(db);
 
+        // Remove team role from player
         try {
 
             const member =
@@ -700,19 +735,18 @@ async function handleCommand(interaction) {
                     player.id
                 );
 
-            const role =
-                interaction.guild.roles.cache.get(
-                    team.roleId
-                );
-
             if (
-                role &&
-                member.roles.cache.has(role.id)
+                member.roles.cache.has(
+                    teamFound.roleId
+                )
             ) {
-                await member.roles.remove(role);
+                await member.roles.remove(
+                    teamFound.roleId
+                );
             }
 
         } catch (error) {
+
             console.error(
                 "❌ Could not remove team role:",
                 error.message
@@ -720,8 +754,16 @@ async function handleCommand(interaction) {
         }
 
         return interaction.reply({
-            content:
-                `📤 <@${player.id}> was released from **${team.name}**.`
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(
+                        "📤 Player Released"
+                    )
+                    .setDescription(
+                        `<@${player.id}> has been released from **${teamFound.name}**.`
+                    )
+                    .setTimestamp()
+            ]
         });
     }
 
@@ -743,7 +785,7 @@ async function handleCommand(interaction) {
         if (!team) {
             return interaction.reply({
                 content:
-                    "❌ That team does not exist.",
+                    "❌ That team has not been created.",
                 ephemeral: true
             });
         }
@@ -768,14 +810,16 @@ async function handleCommand(interaction) {
                         {
                             name: "👑 Manager",
                             value:
-                                `<@${team.managerId}>`
+                                `<@${team.managerId}>`,
+                            inline: true
                         },
                         {
                             name: "⭐ Co-Manager",
                             value:
                                 team.coManagerId
                                     ? `<@${team.coManagerId}>`
-                                    : "None"
+                                    : "None",
+                            inline: true
                         },
                         {
                             name:
@@ -809,9 +853,9 @@ async function handleCommand(interaction) {
 
         const embed =
             new EmbedBuilder()
-                .setTitle("🏆 League")
+                .setTitle("🏆 VVLL League")
                 .setDescription(
-                    `${teams.length} teams registered`
+                    `**${teams.length} teams registered**`
                 )
                 .setTimestamp();
 
@@ -822,13 +866,13 @@ async function handleCommand(interaction) {
                     `🏟️ ${team.name}`,
 
                 value:
-                    `👑 Manager: <@${team.managerId}>\n` +
-                    `⭐ Co-Manager: ${
+                    `👑 **Manager:** <@${team.managerId}>\n` +
+                    `⭐ **Co-Manager:** ${
                         team.coManagerId
                             ? `<@${team.coManagerId}>`
                             : "None"
                     }\n` +
-                    `👥 Players: ${team.players.length}`
+                    `👥 **Players:** ${team.players.length}`
             });
         }
 
@@ -849,7 +893,7 @@ async function handleCommand(interaction) {
         if (!isPOC(interaction.user.id)) {
             return interaction.reply({
                 content:
-                    "❌ Only the POC can create games.",
+                    "❌ Only the POC or Co-POC can create games.",
                 ephemeral: true
             });
         }
@@ -875,7 +919,7 @@ async function handleCommand(interaction) {
         ) {
             return interaction.reply({
                 content:
-                    "❌ Both teams must already exist.",
+                    "❌ Both teams must already be created.",
                 ephemeral: true
             });
         }
@@ -904,7 +948,9 @@ async function handleCommand(interaction) {
         return interaction.reply({
             embeds: [
                 new EmbedBuilder()
-                    .setTitle("⚽ Game Created")
+                    .setTitle(
+                        "⚽ VVLL Game Created"
+                    )
                     .addFields(
                         {
                             name: "Teams",
@@ -944,7 +990,7 @@ async function handleCommand(interaction) {
         if (!isPOC(interaction.user.id)) {
             return interaction.reply({
                 content:
-                    "❌ Only the POC can give stats.",
+                    "❌ Only the POC or Co-POC can give stats.",
                 ephemeral: true
             });
         }
@@ -976,11 +1022,31 @@ async function handleCommand(interaction) {
         saveDB(db);
 
         return interaction.reply({
-            content:
-                `📊 Stats updated for <@${player.id}>!\n` +
-                `⚽ Goals: +${goals}\n` +
-                `🎯 Assists: +${assists}\n` +
-                `🧤 Saves: +${saves}`
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle("📊 Stats Updated")
+                    .setDescription(
+                        `<@${player.id}>`
+                    )
+                    .addFields(
+                        {
+                            name: "⚽ Goals",
+                            value: `+${goals}`,
+                            inline: true
+                        },
+                        {
+                            name: "🎯 Assists",
+                            value: `+${assists}`,
+                            inline: true
+                        },
+                        {
+                            name: "🧤 Saves",
+                            value: `+${saves}`,
+                            inline: true
+                        }
+                    )
+                    .setTimestamp()
+            ]
         });
     }
 
@@ -1050,7 +1116,7 @@ async function handleCommand(interaction) {
         if (!isPOC(interaction.user.id)) {
             return interaction.reply({
                 content:
-                    "❌ Only the POC can change managers.",
+                    "❌ Only the POC or Co-POC can change managers.",
                 ephemeral: true
             });
         }
@@ -1070,7 +1136,7 @@ async function handleCommand(interaction) {
         if (!team) {
             return interaction.reply({
                 content:
-                    "❌ That team does not exist.",
+                    "❌ That team has not been created.",
                 ephemeral: true
             });
         }
@@ -1081,12 +1147,13 @@ async function handleCommand(interaction) {
         const oldCoManager =
             team.coManagerId;
 
+        // Remove old management role
         if (
             oldManager &&
             oldManager !== newManager.id &&
             oldManager !== newCoManager?.id
         ) {
-            await removeOwnerRole(
+            await removeTeamOwnerRole(
                 interaction,
                 oldManager
             );
@@ -1095,43 +1162,58 @@ async function handleCommand(interaction) {
         if (
             oldCoManager &&
             oldCoManager !== newManager.id &&
-            oldCoManager !== newCoManager?.id
+            oldCoManager !== newCoManager?.id &&
+            oldCoManager !== oldManager
         ) {
-            await removeOwnerRole(
+            await removeTeamOwnerRole(
                 interaction,
                 oldCoManager
             );
         }
 
+        // Update database
         team.managerId =
             newManager.id;
 
         team.coManagerId =
-            newCoManager?.id || null;
+            newCoManager
+                ? newCoManager.id
+                : null;
 
         saveDB(db);
 
-        await giveOwnerRole(
+        // Give new manager role
+        await giveTeamOwnerRole(
             interaction,
             newManager.id
         );
 
+        // Give new co-manager role
         if (newCoManager) {
-            await giveOwnerRole(
+            await giveTeamOwnerRole(
                 interaction,
                 newCoManager.id
             );
         }
 
         return interaction.reply({
-            content:
-                `👑 **${team.name}** management updated!\n\n` +
-                `Manager: <@${newManager.id}>\n` +
-                `Co-Manager: ${
-                    newCoManager
-                        ? `<@${newCoManager.id}>`
-                        : "None"
-                }`
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(
+                        "👑 Management Updated"
+                    )
+                    .setDescription(
+                        `**Team:** ${role}\n\n` +
+                        `👑 **Manager:** <@${newManager.id}>\n` +
+                        `⭐ **Co-Manager:** ${
+                            newCoManager
+                                ? `<@${newCoManager.id}>`
+                                : "None"
+                        }\n\n` +
+                        `The Team Owner role has been updated automatically.`
+                    )
+                    .setTimestamp()
+            ]
         });
     }
 
@@ -1147,7 +1229,7 @@ async function handleCommand(interaction) {
         if (!isPOC(interaction.user.id)) {
             return interaction.reply({
                 content:
-                    "❌ Only the POC can delete teams.",
+                    "❌ Only the POC or Co-POC can delete teams.",
                 ephemeral: true
             });
         }
@@ -1166,16 +1248,19 @@ async function handleCommand(interaction) {
             });
         }
 
-        await removeOwnerRole(
-            interaction,
-            team.managerId
-        );
+        // Remove Team Owner role
+        if (team.managerId) {
+            await removeTeamOwnerRole(
+                interaction,
+                team.managerId
+            );
+        }
 
         if (
             team.coManagerId &&
             team.coManagerId !== team.managerId
         ) {
-            await removeOwnerRole(
+            await removeTeamOwnerRole(
                 interaction,
                 team.coManagerId
             );
@@ -1186,190 +1271,21 @@ async function handleCommand(interaction) {
         saveDB(db);
 
         return interaction.reply({
-            content:
-                `🗑️ **${team.name}** has been deleted.`
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle(
+                        "🗑️ Team Deleted"
+                    )
+                    .setDescription(
+                        `${role} has been removed from VVLL.`
+                    )
+                    .setTimestamp()
+            ]
         });
     }
 }
-
-// ==========================================
-// BUTTON HANDLER
-// ==========================================
-
-async function handleButton(interaction) {
-
-    const db = loadDB();
-
-    const customId =
-        interaction.customId;
-
-    // ======================================
-    // ACCEPT CONTRACT
-    // ======================================
-
-    if (customId.startsWith("accept_")) {
-
-        const offerId =
-            customId.replace("accept_", "");
-
-        const playerId =
-            interaction.user.id;
-
-        const offer =
-            db.pendingOffers[playerId];
-
-        if (
-            !offer ||
-            offer.offerId !== offerId
-        ) {
-            return interaction.reply({
-                content:
-                    "❌ This contract is no longer valid.",
-                ephemeral: true
-            });
-        }
-
-        const team =
-            db.teams[offer.teamId];
-
-        if (!team) {
-
-            delete db.pendingOffers[playerId];
-
-            saveDB(db);
-
-            return interaction.reply({
-                content:
-                    "❌ This team no longer exists.",
-                ephemeral: true
-            });
-        }
-
-        // Make sure player isn't already signed
-        for (const teamId of Object.keys(db.teams)) {
-
-            if (
-                db.teams[teamId].players
-                    .includes(playerId)
-            ) {
-
-                delete db.pendingOffers[playerId];
-
-                saveDB(db);
-
-                return interaction.reply({
-                    content:
-                        "❌ You are already signed to a team.",
-                    ephemeral: true
-                });
-            }
-        }
-
-        team.players.push(playerId);
-
-        db.players[playerId] = {
-            teamId: team.roleId
-        };
-
-        delete db.pendingOffers[playerId];
-
-        saveDB(db);
-
-        // Give team role
-        try {
-
-            const guild =
-                interaction.client.guilds.cache.first();
-
-            const member =
-                await guild.members.fetch(
-                    playerId
-                );
-
-            const role =
-                guild.roles.cache.get(
-                    team.roleId
-                );
-
-            if (role) {
-                await member.roles.add(role);
-            }
-
-        } catch (error) {
-
-            console.error(
-                "❌ Could not give team role:",
-                error.message
-            );
-        }
-
-        await interaction.update({
-            embeds: [
-                new EmbedBuilder()
-                    .setTitle("✅ Contract Accepted")
-                    .setDescription(
-                        `You are now signed to **${team.name}**!`
-                    )
-                    .setTimestamp()
-            ],
-            components: []
-        });
-
-        return;
-    }
-
-    // ======================================
-    // DECLINE CONTRACT
-    // ======================================
-
-    if (customId.startsWith("decline_")) {
-
-        const offerId =
-            customId.replace("decline_", "");
-
-        const playerId =
-            interaction.user.id;
-
-        const offer =
-            db.pendingOffers[playerId];
-
-        if (
-            !offer ||
-            offer.offerId !== offerId
-        ) {
-            return interaction.reply({
-                content:
-                    "❌ This contract is no longer valid.",
-                ephemeral: true
-            });
-        }
-
-        delete db.pendingOffers[playerId];
-
-        saveDB(db);
-
-        await interaction.update({
-            embeds: [
-                new EmbedBuilder()
-                    .setTitle("❌ Contract Declined")
-                    .setDescription(
-                        "You declined the contract offer."
-                    )
-                    .setTimestamp()
-            ],
-            components: []
-        });
-
-        return;
-    }
-}
-
-// ==========================================
-// EXPORT
-// ==========================================
 
 module.exports = {
     commands,
-    handleCommand,
-    handleButton
+    handleCommand
 };
