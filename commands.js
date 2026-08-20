@@ -1289,3 +1289,73 @@ module.exports = {
     commands,
     handleCommand
 };
+const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+
+const commands = [
+  new SlashCommandBuilder()
+    .setName("kick")
+    .setDescription("Kick a member")
+    .addUserOption(option =>
+      option.setName("user")
+        .setDescription("Member to kick")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName("reason")
+        .setDescription("Reason for the kick")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("ban")
+    .setDescription("Ban a member")
+    .addUserOption(option =>
+      option.setName("user")
+        .setDescription("Member to ban")
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName("reason")
+        .setDescription("Reason for the ban")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("timeout")
+    .setDescription("Timeout a member")
+    .addUserOption(option =>
+      option.setName("user")
+        .setDescription("Member to timeout")
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option.setName("minutes")
+        .setDescription("Timeout duration in minutes")
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(40320)
+    )
+    .addStringOption(option =>
+      option.setName("reason")
+        .setDescription("Reason for the timeout")
+        .setRequired(false)
+    )
+].map(command => command.toJSON());
+
+const rest = new REST({ version: "10" }).setToken("YOUR_BOT_TOKEN");
+
+(async () => {
+  try {
+    await rest.put(
+      Routes.applicationGuildCommands(
+        "YOUR_CLIENT_ID",
+        "YOUR_SERVER_ID"
+      ),
+      { body: commands }
+    );
+
+    console.log("Slash commands registered");
+  } catch (error) {
+    console.error(error);
+  }
+})();
