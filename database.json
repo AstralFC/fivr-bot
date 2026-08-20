@@ -3,5 +3,7 @@
   "players": {},
   "games": {},
   "stats": {},
-  "pendingOffers": {}
+  "settings": {
+    "season": 1
+  }
 }
