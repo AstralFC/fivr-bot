@@ -1,7 +1,7 @@
 {
-  "name": "friends-league-bot",
+  "name": "vvll-friendly-bot",
   "version": "1.0.0",
-  "description": "Discord league management bot",
+  "description": "VVLL Discord Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
